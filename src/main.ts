@@ -1,24 +1,210 @@
 import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+import mapboxgl from 'mapbox-gl'
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
+interface Waypoint {
+  name: string
+  latitude: number
+  longitude: number
+  description: string
+  proximityDistance: number
+  altitude: number
+}
+
+// Parse CSV data
+function parseCSV(csv: string): Waypoint[] {
+  const lines = csv.trim().split('\n')
+  const waypoints: Waypoint[] = []
+
+  // Skip header row
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+
+    const [name, lat, lng, description, proximity, altitude] = line.split(',')
+    waypoints.push({
+      name: name.trim(),
+      latitude: parseFloat(lat),
+      longitude: parseFloat(lng),
+      description: description.trim(),
+      proximityDistance: parseInt(proximity, 10),
+      altitude: parseInt(altitude, 10)
+    })
+  }
+
+  return waypoints.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+// Check if we're on mobile viewport
+function isMobile(): boolean {
+  return window.innerWidth < 768
+}
+
+// Toggle waypoint panel visibility (mobile only)
+function togglePanel(show?: boolean): void {
+  const panel = document.getElementById('waypoint-panel')
+  if (!panel) return
+
+  if (show === undefined) {
+    panel.classList.toggle('-translate-x-full')
+    panel.classList.toggle('translate-x-0')
+  } else if (show) {
+    panel.classList.remove('-translate-x-full')
+    panel.classList.add('translate-x-0')
+  } else {
+    panel.classList.add('-translate-x-full')
+    panel.classList.remove('translate-x-0')
+  }
+}
+
+// Render waypoint list
+function renderWaypoints(
+  waypoints: Waypoint[],
+  container: HTMLElement,
+  onSelect: (waypoint: Waypoint) => void,
+  selectedName?: string
+): void {
+  container.innerHTML = waypoints.map(wp => `
+    <div
+      class="waypoint-item ${wp.name === selectedName ? 'active' : ''}"
+      data-waypoint="${wp.name}"
+    >
+      <div class="waypoint-name">${wp.name}</div>
+      <div class="waypoint-desc">${wp.description}</div>
+      <div class="waypoint-coords">
+        ${wp.latitude.toFixed(4)}°, ${wp.longitude.toFixed(4)}° | ${wp.altitude}m
+      </div>
     </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
+  `).join('')
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+  // Add click handlers
+  container.querySelectorAll('.waypoint-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const name = item.getAttribute('data-waypoint')
+      const waypoint = waypoints.find(wp => wp.name === name)
+      if (waypoint) {
+        onSelect(waypoint)
+      }
+    })
+  })
+}
+
+// Main application
+async function init(): Promise<void> {
+  // Load waypoints from CSV
+  const response = await fetch('/corryong-cup-waypoints.csv')
+  const csvText = await response.text()
+  const waypoints = parseCSV(csvText)
+
+  // Get DOM elements
+  const waypointList = document.getElementById('waypoint-list')!
+  const searchInput = document.getElementById('waypoint-search') as HTMLInputElement
+  const menuToggle = document.getElementById('menu-toggle')!
+
+  // Initialize MapBox
+  // Note: You need to set your MapBox access token
+  mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'YOUR_MAPBOX_TOKEN'
+
+  // Calculate center from waypoints
+  const avgLat = waypoints.reduce((sum, wp) => sum + wp.latitude, 0) / waypoints.length
+  const avgLng = waypoints.reduce((sum, wp) => sum + wp.longitude, 0) / waypoints.length
+
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/outdoors-v12',
+    center: [avgLng, avgLat],
+    zoom: 10
+  })
+
+  // Add navigation controls
+  map.addControl(new mapboxgl.NavigationControl(), 'top-right')
+
+  // Store markers for later reference
+  const markers: Map<string, mapboxgl.Marker> = new Map()
+
+  // Add markers for all waypoints once map loads
+  map.on('load', () => {
+    waypoints.forEach(wp => {
+      const el = document.createElement('div')
+      el.className = 'w-3 h-3 bg-primary rounded-full border-2 border-white shadow-md cursor-pointer'
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([wp.longitude, wp.latitude])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 25 })
+            .setHTML(`
+              <div class="p-2">
+                <div class="font-semibold">${wp.name}</div>
+                <div class="text-sm">${wp.description}</div>
+                <div class="text-xs text-gray-500 mt-1">Altitude: ${wp.altitude}m</div>
+              </div>
+            `)
+        )
+        .addTo(map)
+
+      markers.set(wp.name, marker)
+
+      // Click on marker selects waypoint
+      el.addEventListener('click', () => {
+        selectWaypoint(wp)
+      })
+    })
+  })
+
+  let selectedWaypoint: Waypoint | null = null
+
+  // Handle waypoint selection
+  function selectWaypoint(waypoint: Waypoint): void {
+    selectedWaypoint = waypoint
+
+    // Update list highlighting
+    document.querySelectorAll('.waypoint-item').forEach(item => {
+      item.classList.toggle('active', item.getAttribute('data-waypoint') === waypoint.name)
+    })
+
+    // Fly to waypoint
+    map.flyTo({
+      center: [waypoint.longitude, waypoint.latitude],
+      zoom: 14,
+      duration: 1500
+    })
+
+    // Open popup for selected marker
+    const marker = markers.get(waypoint.name)
+    if (marker) {
+      marker.togglePopup()
+    }
+
+    // On mobile, hide the panel after selection
+    if (isMobile()) {
+      togglePanel(false)
+    }
+  }
+
+  // Render initial waypoint list
+  renderWaypoints(waypoints, waypointList, selectWaypoint)
+
+  // Search functionality
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.toLowerCase()
+    const filtered = waypoints.filter(wp =>
+      wp.name.toLowerCase().includes(query) ||
+      wp.description.toLowerCase().includes(query)
+    )
+    renderWaypoints(filtered, waypointList, selectWaypoint, selectedWaypoint?.name)
+  })
+
+  // Menu toggle (mobile)
+  menuToggle.addEventListener('click', () => {
+    togglePanel()
+  })
+
+  // Close panel when clicking outside on mobile
+  document.getElementById('map')!.addEventListener('click', () => {
+    if (isMobile()) {
+      togglePanel(false)
+    }
+  })
+}
+
+// Start the app
+init().catch(console.error)
