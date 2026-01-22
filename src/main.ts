@@ -1,5 +1,6 @@
 import './style.css'
 import mapboxgl from 'mapbox-gl'
+import { inferSchema, initParser } from 'udsv'
 
 interface Waypoint {
   name: string
@@ -10,36 +11,32 @@ interface Waypoint {
   altitude: number
 }
 
-// Parse CSV data
+// Parse CSV data using uDSV
 function parseCSV(csv: string): Waypoint[] {
-  const lines = csv.trim().split('\n')
-  const waypoints: Waypoint[] = []
+  const schema = inferSchema(csv)
+  const parser = initParser(schema)
+  const rows = parser.typedObjs(csv) as Array<{
+    Name: string
+    Latitude: number
+    Longitude: number
+    Description: string
+    'Proximity Distance': number
+    Altitude: number
+  }>
 
-  // Skip header row
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line) continue
-
-    const [name, lat, lng, description, proximity, altitude] = line.split(',')
-    waypoints.push({
-      name: name.trim(),
-      latitude: parseFloat(lat),
-      longitude: parseFloat(lng),
-      description: description.trim(),
-      proximityDistance: parseInt(proximity, 10),
-      altitude: parseInt(altitude, 10)
-    })
-  }
+  const waypoints: Waypoint[] = rows.map(row => ({
+    name: row.Name,
+    latitude: row.Latitude,
+    longitude: row.Longitude,
+    description: row.Description,
+    proximityDistance: row['Proximity Distance'],
+    altitude: row.Altitude
+  }))
 
   return waypoints.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-// Check if we're on mobile viewport
-function isMobile(): boolean {
-  return window.innerWidth < 768
-}
-
-// Toggle waypoint panel visibility (mobile only)
+// Toggle waypoint panel visibility
 function togglePanel(show?: boolean): void {
   const panel = document.getElementById('waypoint-panel')
   if (!panel) return
@@ -174,10 +171,8 @@ async function init(): Promise<void> {
       marker.togglePopup()
     }
 
-    // On mobile, hide the panel after selection
-    if (isMobile()) {
-      togglePanel(false)
-    }
+    // Hide the panel after selection
+    togglePanel(false)
   }
 
   // Render initial waypoint list
@@ -198,11 +193,9 @@ async function init(): Promise<void> {
     togglePanel()
   })
 
-  // Close panel when clicking outside on mobile
+  // Close panel when clicking on the map
   document.getElementById('map')!.addEventListener('click', () => {
-    if (isMobile()) {
-      togglePanel(false)
-    }
+    togglePanel(false)
   })
 }
 
