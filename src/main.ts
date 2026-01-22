@@ -36,6 +36,11 @@ function parseCSV(csv: string): Waypoint[] {
   return waypoints.sort((a, b) => a.name.localeCompare(b.name))
 }
 
+// Check if we're on mobile viewport
+function isMobile(): boolean {
+  return window.innerWidth < 768
+}
+
 // Toggle waypoint panel visibility
 function togglePanel(show?: boolean): void {
   const panel = document.getElementById('waypoint-panel')
@@ -171,8 +176,10 @@ async function init(): Promise<void> {
       marker.togglePopup()
     }
 
-    // Hide the panel after selection
-    togglePanel(false)
+    // On mobile, hide the panel after selection
+    if (isMobile()) {
+      togglePanel(false)
+    }
   }
 
   // Render initial waypoint list
@@ -193,9 +200,11 @@ async function init(): Promise<void> {
     togglePanel()
   })
 
-  // Close panel when clicking on the map
+  // Close panel when clicking on the map (mobile only)
   document.getElementById('map')!.addEventListener('click', () => {
-    togglePanel(false)
+    if (isMobile()) {
+      togglePanel(false)
+    }
   })
 }
 
