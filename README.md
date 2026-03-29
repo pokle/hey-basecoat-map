@@ -1,21 +1,40 @@
 # hey-basecoat-map
 
-This is a sample response map app that uses:
+A responsive map app displaying hang gliding waypoints for the Corryong Cup competition.
 
-- TypeScript
-- Vite
-- TailwindCSS
-- Basecoat UI
-- MapBox GL JS
+Live: https://hey-basecoat-map.netlify.app
 
-# Prompts
+Built with TypeScript, Vite, TailwindCSS, Basecoat UI, and MapBox GL JS.
 
-I initiliased the project with:
+## Setup
+
+```bash
+bun install
+cp .env.example .env  # then set your VITE_MAPBOX_TOKEN
+```
+
+## Development
+
+```bash
+bun run dev       # Start dev server at http://localhost:5173
+bun run build     # Type-check and build for production
+bun run preview   # Preview production build
+```
+
+## Deploy
+
+Hosted on [Netlify](https://www.netlify.com/) with automatic deploys on push to `main`. See [deployments](https://app.netlify.com/projects/hey-basecoat-map/deploys).
+
+The `VITE_MAPBOX_TOKEN` environment variable is configured in Netlify's site settings.
+
+## Prompts
+
+Initialised the project with:
 ```
 npm create vite@latest hey-basecoat-map -- --template vanilla-ts
 ```
 
-And then prompted Claude to:
+Then prompted Claude to:
 ```
 /init This is a demonstrator that will use [tailwindcss](https://tailwindcss.com/) and [basecoat](https://basecoatui.com/) with plain vanilla typescript. The app displays
   a map using MapBox. It shows a list of waypoints from @public/corryong-cup-waypoints.csv that a user can select - which centers and zooms the map to that waypoint. The app
