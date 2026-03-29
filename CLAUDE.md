@@ -9,9 +9,9 @@ A responsive map application displaying hang gliding waypoints for the Corryong 
 ## Development Commands
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Type-check with tsc, then build for production
-npm run preview  # Preview production build locally
+bun run dev      # Start development server
+bun run build    # Type-check with tsc, then build for production
+bun run preview  # Preview production build locally
 ```
 
 ## Environment Setup

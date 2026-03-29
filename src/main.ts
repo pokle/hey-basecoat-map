@@ -2,6 +2,8 @@ import './style.css'
 import mapboxgl from 'mapbox-gl'
 import { inferSchema, initParser } from 'udsv'
 
+declare const __APP_VERSION__: string
+
 interface Waypoint {
   name: string
   latitude: number
@@ -96,6 +98,9 @@ async function init(): Promise<void> {
   const response = await fetch('/corryong-cup-waypoints.csv')
   const csvText = await response.text()
   const waypoints = parseCSV(csvText)
+
+  // Display version
+  document.getElementById('app-version')!.textContent = `v${__APP_VERSION__}`
 
   // Get DOM elements
   const waypointList = document.getElementById('waypoint-list')!

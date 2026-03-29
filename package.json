@@ -1,7 +1,7 @@
 {
   "name": "hey-basecoat-map",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,15 +9,14 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@types/mapbox-gl": "^3.4.1",
-    "typescript": "~5.9.3",
-    "vite": "^7.2.4"
+    "typescript": "~6.0.2",
+    "vite": "^8.0.3"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
-    "basecoat-css": "^0.3.10",
-    "mapbox-gl": "^3.18.0",
-    "tailwindcss": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
+    "basecoat-css": "^0.3.11",
+    "mapbox-gl": "^3.20.0",
+    "tailwindcss": "^4.2.2",
     "udsv": "^0.7.3"
   }
 }
